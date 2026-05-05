@@ -128,55 +128,77 @@
   </main>
 
   <script>
-  let nextFirst = 0;        // 次に読み込む first の値
-  let loading = false;
+  let currentFirst = 0;      // 今のページの first 値（0,10,20,...）
+  const PAGE_SIZE = 10;
 
   const resultsEl = document.getElementById("results");
   const searchBtn = document.getElementById("searchBtn");
   const inputEl = document.getElementById("q");
 
-  // 「もっと読み込む」ボタン
-  const loadMoreBtn = document.createElement("button");
-  loadMoreBtn.textContent = "もっと読み込む";
-  loadMoreBtn.style.padding = "10px 20px";
-  loadMoreBtn.style.borderRadius = "999px";
-  loadMoreBtn.style.border = "none";
-  loadMoreBtn.style.background = "#3b82f6";
-  loadMoreBtn.style.color = "#fff";
-  loadMoreBtn.style.cursor = "pointer";
-  loadMoreBtn.style.display = "none";
-  loadMoreBtn.style.margin = "20px auto";
-  resultsEl.after(loadMoreBtn);
+  // 「次のページ」ボタンを JS で作る
+  const nextPageBtn = document.createElement("button");
+  nextPageBtn.textContent = "次のページ";
+  nextPageBtn.style.padding = "10px 20px";
+  nextPageBtn.style.borderRadius = "999px";
+  nextPageBtn.style.border = "none";
+  nextPageBtn.style.background = "#3b82f6";
+  nextPageBtn.style.color = "#fff";
+  nextPageBtn.style.cursor = "pointer";
+  nextPageBtn.style.display = "none";
+  nextPageBtn.style.margin = "20px auto";
+  resultsEl.after(nextPageBtn);
+
+  // （必要なら）前のページボタンも作れる
+  const prevPageBtn = document.createElement("button");
+  prevPageBtn.textContent = "前のページ";
+  prevPageBtn.style.padding = "10px 20px";
+  prevPageBtn.style.borderRadius = "999px";
+  prevPageBtn.style.border = "none";
+  prevPageBtn.style.background = "#6b7280";
+  prevPageBtn.style.color = "#fff";
+  prevPageBtn.style.cursor = "pointer";
+  prevPageBtn.style.display = "none";
+  prevPageBtn.style.margin = "20px 10px 20px 0";
+  resultsEl.before(prevPageBtn);
 
   searchBtn.addEventListener("click", startSearch);
   inputEl.addEventListener("keydown", (e) => {
     if (e.key === "Enter") startSearch();
   });
 
-  loadMoreBtn.addEventListener("click", loadMore);
+  nextPageBtn.addEventListener("click", () => {
+    currentFirst += PAGE_SIZE;   // 0→10→20→30...
+    loadPage();
+  });
+
+  prevPageBtn.addEventListener("click", () => {
+    if (currentFirst >= PAGE_SIZE) {
+      currentFirst -= PAGE_SIZE; // 20→10→0...
+      loadPage();
+    }
+  });
 
   function startSearch() {
     const q = inputEl.value.trim();
     if (!q) return;
 
-    resultsEl.innerHTML = "";
-    nextFirst = 0;
-    loadMoreBtn.style.display = "none";
-
-    loadMore();
+    currentFirst = 0;
+    loadPage();
   }
 
-  async function loadMore() {
-    if (loading) return;
-    loading = true;
-
+  async function loadPage() {
     const q = inputEl.value.trim();
-    const res = await fetch(`/api/search?q=${encodeURIComponent(q)}&first=${nextFirst}`);
+    if (!q) return;
+
+    // 一旦表示をクリア（1ページ＝10件だけ表示）
+    resultsEl.innerHTML = "";
+
+    const res = await fetch(`/api/search?q=${encodeURIComponent(q)}&first=${currentFirst}`);
     const data = await res.json();
 
-    const youtube = data.youtubeList;
+    const youtube = data.youtubeList || [];
 
-    // 10件表示
+    // 10件分を iframe で表示
     youtube.forEach(id => {
       const div = document.createElement("div");
       div.className = "video-item";
@@ -184,19 +206,23 @@
       resultsEl.appendChild(div);
     });
 
-    // 次の first を10増やす
-    nextFirst += 10;
-
-    // YouTube が10件未満ならもう終わり
-    if (youtube.length < 10) {
-      loadMoreBtn.style.display = "none";
+    // 前のページボタンの表示制御
+    if (currentFirst > 0) {
+      prevPageBtn.style.display = "inline-block";
     } else {
-      loadMoreBtn.style.display = "block";
+      prevPageBtn.style.display = "none";
     }
 
-    loading = false;
+    // 次のページボタンの表示制御
+    // 10件未満しか返ってこなかったら「もう次はない」と判断して非表示
+    if (youtube.length < PAGE_SIZE) {
+      nextPageBtn.style.display = "none";
+    } else {
+      nextPageBtn.style.display = "inline-block";
+    }
   }
 </script>
+
 
 </body>
 </html>
