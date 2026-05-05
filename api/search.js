@@ -12,15 +12,24 @@ export default async function handler(req, res) {
 
     const html = await response.text();
 
-    // ytInitialData を抽出
-    const jsonText = html.match(/ytInitialData"\]\s*=\s*(\{.*?\});/s);
-    if (!jsonText) {
+    // ytInitialData を複数パターンで探す
+    const match =
+      html.match(/ytInitialData"\]
+
+\s*=\s*(\{.*?\});/s) ||
+      html.match(/ytInitialData\s*=\s*(\{.*?\});/s) ||
+      html.match(/window
+
+\["ytInitialData"\]
+
+\s*=\s*(\{.*?\});/s);
+
+    if (!match) {
       return res.status(500).json({ error: "ytInitialData not found" });
     }
 
-    const data = JSON.parse(jsonText[1]);
+    const data = JSON.parse(match[1]);
 
-    // 動画リストを抽出
     const contents =
       data.contents?.twoColumnSearchResultsRenderer?.primaryContents
         ?.sectionListRenderer?.contents?.[0]?.itemSectionRenderer?.contents || [];
