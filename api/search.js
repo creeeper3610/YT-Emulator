@@ -14,18 +14,13 @@ export default async function handler(req, res) {
 
     const html = await response.text();
 
-    // 「1ページに何個動画カードがあるか」（YouTube以外も含む）
-    const allMatches = [...html.matchAll(/mc_vtvc_card/g)];
-    const pageCount = allMatches.length;
-
-    // YouTube だけ抜き出し
+    // YouTube のみ抽出
     const ytMatches = [...html.matchAll(/https:\/\/www\.youtube\.com\/watch\?v=([a-zA-Z0-9_-]+)/g)];
     const youtubeList = [...new Set(ytMatches.map(m => m[1]))];
 
     res.status(200).json({
-      first,          // 今回の first
-      pageCount,      // この first からのページに含まれる全動画数
-      youtubeList     // 見つかった YouTube のID一覧
+      first,
+      youtubeList
     });
 
   } catch (err) {
