@@ -53,10 +53,6 @@
       cursor: pointer;
     }
 
-    .search-box button:hover {
-      background: #1d4ed8;
-    }
-
     main {
       padding: 12px;
     }
@@ -87,9 +83,14 @@
       height: 200px;
     }
 
-    #loadMoreBtn {
-      display: none;
-      margin: 20px auto 40px;
+    .page-buttons {
+      display: flex;
+      justify-content: center;
+      gap: 12px;
+      margin: 20px 0;
+    }
+
+    .page-buttons button {
       padding: 10px 20px;
       border-radius: 999px;
       border: none;
@@ -97,11 +98,6 @@
       color: #000;
       font-weight: 600;
       cursor: pointer;
-      display: none;
-    }
-
-    #loadMoreBtn:hover {
-      background: #16a34a;
     }
 
     #status {
@@ -124,55 +120,61 @@
 
   <main>
     <div id="results"></div>
-    <button id="loadMoreBtn">もっと見る</button>
+
+    <div class="page-buttons">
+      <button id="prevPageBtn" style="display:none;">前のページ</button>
+      <button id="nextPageBtn" style="display:none;">次のページ</button>
+    </div>
   </main>
 
   <script>
+    let currentPage = 0;
     let allVideos = [];
     let currentIndex = 0;
     const PAGE_SIZE = 10;
 
     const searchBtn = document.getElementById("searchBtn");
-    const loadMoreBtn = document.getElementById("loadMoreBtn");
+    const prevPageBtn = document.getElementById("prevPageBtn");
+    const nextPageBtn = document.getElementById("nextPageBtn");
     const resultsEl = document.getElementById("results");
     const statusEl = document.getElementById("status");
     const inputEl = document.getElementById("q");
 
-    searchBtn.addEventListener("click", search);
-    loadMoreBtn.addEventListener("click", loadMore);
+    searchBtn.addEventListener("click", () => startSearch(0));
+    prevPageBtn.addEventListener("click", () => startSearch(currentPage - 1));
+    nextPageBtn.addEventListener("click", () => startSearch(currentPage + 1));
+
     inputEl.addEventListener("keydown", (e) => {
-      if (e.key === "Enter") search();
+      if (e.key === "Enter") startSearch(0);
     });
 
-    async function search() {
+    async function startSearch(page) {
       const q = inputEl.value.trim();
       if (!q) return;
 
+      currentPage = page;
       statusEl.textContent = "検索中…";
       resultsEl.innerHTML = "";
-      loadMoreBtn.style.display = "none";
       allVideos = [];
       currentIndex = 0;
 
-      try {
-        const res = await fetch(`/api/search?q=${encodeURIComponent(q)}`);
-        if (!res.ok) {
-          throw new Error("サーバーエラー: " + res.status);
-        }
+      prevPageBtn.style.display = "none";
+      nextPageBtn.style.display = "none";
 
+      try {
+        const res = await fetch(`/api/search?q=${encodeURIComponent(q)}&page=${page}`);
         const data = await res.json();
 
-        if (!Array.isArray(data) || data.length === 0) {
-          statusEl.textContent = "動画が見つかりませんでした。";
-          return;
-        }
+        allVideos = data.videos;
+        statusEl.textContent = `${data.count}件 見つかりました（ページ ${page + 1}）`;
 
-        allVideos = data;
-        statusEl.textContent = `${allVideos.length}件 見つかりました`;
         loadMore();
+
+        if (page > 0) prevPageBtn.style.display = "block";
+        if (data.count > 0) nextPageBtn.style.display = "block";
+
       } catch (err) {
-        console.error(err);
-        statusEl.textContent = "エラーが発生しました: " + err.message;
+        statusEl.textContent = "エラー: " + err.message;
       }
     }
 
@@ -184,15 +186,10 @@
         const div = document.createElement("div");
         div.className = "video-item";
         div.innerHTML = `
-          <iframe
-            src="https://www.youtube.com/embed/${id}"
-            allowfullscreen
-          ></iframe>
+          <iframe src="https://www.youtube.com/embed/${id}" allowfullscreen></iframe>
         `;
         resultsEl.appendChild(div);
       });
-
-      loadMoreBtn.style.display = currentIndex < allVideos.length ? "block" : "none";
     }
   </script>
 </body>
