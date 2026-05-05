@@ -128,69 +128,59 @@
   </main>
 
   <script>
-    let currentPage = 0;
-    let allVideos = [];
-    let currentIndex = 0;
-    const PAGE_SIZE = 10;
+  let currentPage = 0;
+  let allVideos = [];
+  let loadedCount = 0;
+  const PAGE_SIZE = 10;
 
-    const searchBtn = document.getElementById("searchBtn");
-    const prevPageBtn = document.getElementById("prevPageBtn");
-    const nextPageBtn = document.getElementById("nextPageBtn");
-    const resultsEl = document.getElementById("results");
-    const statusEl = document.getElementById("status");
-    const inputEl = document.getElementById("q");
+  const resultsEl = document.getElementById("results");
+  const statusEl = document.getElementById("status");
+  const nextPageBtn = document.getElementById("nextPageBtn");
+  const prevPageBtn = document.getElementById("prevPageBtn");
+  const inputEl = document.getElementById("q");
 
-    searchBtn.addEventListener("click", () => startSearch(0));
-    prevPageBtn.addEventListener("click", () => startSearch(currentPage - 1));
-    nextPageBtn.addEventListener("click", () => startSearch(currentPage + 1));
+  async function startSearch(page) {
+    const q = inputEl.value.trim();
+    if (!q) return;
 
-    inputEl.addEventListener("keydown", (e) => {
-      if (e.key === "Enter") startSearch(0);
+    currentPage = page;
+    loadedCount = 0;
+    resultsEl.innerHTML = "";
+    nextPageBtn.style.display = "none";
+    prevPageBtn.style.display = page > 0 ? "block" : "none";
+
+    const res = await fetch(`/api/search?q=${encodeURIComponent(q)}&page=${page}`);
+    const data = await res.json();
+
+    allVideos = data.videos;
+    totalCount = data.count;
+
+    statusEl.textContent = `${totalCount}件 見つかりました（ページ ${page + 1}）`;
+
+    loadMore();
+  }
+
+  function loadMore() {
+    const next = allVideos.slice(loadedCount, loadedCount + PAGE_SIZE);
+    loadedCount += next.length;
+
+    next.forEach(id => {
+      const div = document.createElement("div");
+      div.className = "video-item";
+      div.innerHTML = `<iframe src="https://www.youtube.com/embed/${id}" allowfullscreen></iframe>`;
+      resultsEl.appendChild(div);
     });
 
-    async function startSearch(page) {
-      const q = inputEl.value.trim();
-      if (!q) return;
-
-      currentPage = page;
-      statusEl.textContent = "検索中…";
-      resultsEl.innerHTML = "";
-      allVideos = [];
-      currentIndex = 0;
-
-      prevPageBtn.style.display = "none";
-      nextPageBtn.style.display = "none";
-
-      try {
-        const res = await fetch(`/api/search?q=${encodeURIComponent(q)}&page=${page}`);
-        const data = await res.json();
-
-        allVideos = data.videos;
-        statusEl.textContent = `${data.count}件 見つかりました（ページ ${page + 1}）`;
-
-        loadMore();
-
-        if (page > 0) prevPageBtn.style.display = "block";
-        if (data.count > 0) nextPageBtn.style.display = "block";
-
-      } catch (err) {
-        statusEl.textContent = "エラー: " + err.message;
-      }
+    // すべて読み込んだら次ページボタンを表示
+    if (loadedCount >= allVideos.length) {
+      nextPageBtn.style.display = "block";
     }
+  }
 
-    function loadMore() {
-      const nextVideos = allVideos.slice(currentIndex, currentIndex + PAGE_SIZE);
-      currentIndex += PAGE_SIZE;
+  // ボタン
+  nextPageBtn.addEventListener("click", () => startSearch(currentPage + 1));
+  prevPageBtn.addEventListener("click", () => startSearch(currentPage - 1));
+</script>
 
-      nextVideos.forEach((id) => {
-        const div = document.createElement("div");
-        div.className = "video-item";
-        div.innerHTML = `
-          <iframe src="https://www.youtube.com/embed/${id}" allowfullscreen></iframe>
-        `;
-        resultsEl.appendChild(div);
-      });
-    }
-  </script>
 </body>
 </html>
