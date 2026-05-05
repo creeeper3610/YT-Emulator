@@ -19,33 +19,36 @@ export default async function handler(req, res) {
 
     const html = await response.text();
 
-    // ★ 新しい動画カード構造に対応
+    // ★ mmeta と aria-label を同時に取る
     const cards = [...html.matchAll(
-      /mmeta="([^"]+)"[\s\S]*?aria-label="([^"]+)"/g
+      /mmeta="([^"]+)"[\s\S]*?aria-label="([^"]*)"/g
     )];
 
     const results = [];
 
     for (const card of cards) {
       const rawMeta = card[1];
-      const aria = card[2];
 
       // mmeta JSON をデコード
       const meta = JSON.parse(
         rawMeta.replace(/&quot;/g, '"').replace(/&amp;/g, '&')
       );
 
-      // YouTube URL → ID 抽出
+      // YouTube ID
       const idMatch = meta.murl.match(/v=([a-zA-Z0-9_-]+)/);
       const id = idMatch ? idMatch[1] : null;
 
-      // 視聴回数
-      const viewsMatch = aria.match(/視聴回数:\s*([^·]+)/);
-      const views = viewsMatch ? viewsMatch[1].trim() : null;
+      // 視聴回数（vsc があれば最優先）
+      let views = null;
+      if (meta.vsc) {
+        views = meta.vsc; // 生の数字（例：220000）
+      }
 
-      // 投稿日（YYYY年MM月DD日）
-      const dateMatch = aria.match(/(\d{4}年\d{1,2}月\d{1,2}日)/);
-      const age = dateMatch ? dateMatch[1] : null;
+      // 投稿日（pdate があれば最優先）
+      let age = null;
+      if (meta.pdate) {
+        age = meta.pdate; // 例：2023-06-12
+      }
 
       results.push({
         id,
