@@ -18,45 +18,40 @@ export default async function handler(req, res) {
     });
 
     const html = await response.text();
-    res.send(html);
-    return;
-
 
     // ★ 新しい動画カード構造に対応
-    const cards = [...html.matchAll(/<div class="dg_u">([\s\S]*?)<\/div>\s*<\/div>/g)];
+    const cards = [...html.matchAll(/<div[^>]+class="mc_vtvc[^"]*"[^>]*mmeta="([^"]+)"[\s\S]*?aria-label="([^"]+)"/g)];
 
     const results = [];
 
     for (const card of cards) {
-      const block = card[1];
+      const mmetaRaw = card[1];
+      const aria = card[2];
 
-      // 動画ID
-      const idMatch = block.match(/youtube\.com\/watch\?v=([a-zA-Z0-9_-]+)/);
-      if (!idMatch) continue;
-      const id = idMatch[1];
+      // mmeta は HTML エスケープされているのでデコード
+      const mmetaJson = JSON.parse(
+        mmetaRaw
+          .replace(/&quot;/g, '"')
+          .replace(/&amp;/g, '&')
+      );
 
-      // タイトル
-      const titleMatch = block.match(/mc_vtvc_title[^>]*>([^<]+)/);
-      const title = titleMatch ? titleMatch[1].trim() : null;
+      const youtubeUrl = mmetaJson.murl;
+      const idMatch = youtubeUrl.match(/v=([a-zA-Z0-9_-]+)/);
+      const id = idMatch ? idMatch[1] : null;
 
-      // チャンネル名
-      const channelMatch = block.match(/mc_vtvc_channel[^>]*>([^<]+)/);
+      // aria-label から情報抽出
+      // 例：
+      // 【5科目】中間・期末テストの勉強法 提供元: YouTube · 期間: 17 分 43 秒 · 視聴回数: 22万 回 · 2023年6月12日 にアップロードされたビデオ · とある男が授業をしてみた がアップロードしたビデオ
+      const title = aria.split("提供元:")[0].trim();
+
+      const viewsMatch = aria.match(/視聴回数:\s*([^·]+)/);
+      const views = viewsMatch ? viewsMatch[1].trim() : null;
+
+      const dateMatch = aria.match(/(\d{4}年\d{1,2}月\d{1,2}日)/);
+      const age = dateMatch ? dateMatch[1] : null;
+
+      const channelMatch = aria.match(/·\s*([^·]+?)\s*がアップロードしたビデオ/);
       const channel = channelMatch ? channelMatch[1].trim() : null;
-
-      // 視聴回数＋投稿日
-      const metaMatch = block.match(/mc_vtvc_meta[^>]*>([^<]+)/);
-      let views = null;
-      let age = null;
-
-      if (metaMatch) {
-        const meta = metaMatch[1];
-
-        const viewsMatch = meta.match(/([\d,.万億兆]+)\s*回視聴/);
-        if (viewsMatch) views = viewsMatch[1];
-
-        const ageMatch = meta.match(/回視聴\s*·\s*(.+)/);
-        if (ageMatch) age = ageMatch[1];
-      }
 
       results.push({
         id,
