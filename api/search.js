@@ -1,10 +1,7 @@
 export default async function handler(req, res) {
   try {
     const q = req.query.q;
-    const page = parseInt(req.query.page || "0", 10);
-
-    // Bing の 1ページは約55件
-    const first = page * 55;
+    const first = parseInt(req.query.first || "0", 10);
 
     const url = `https://www.bing.com/videos/search?q=${encodeURIComponent(q)}&first=${first}&form=QBVLPG`;
 
@@ -17,14 +14,20 @@ export default async function handler(req, res) {
 
     const html = await response.text();
 
-    const matches = [...html.matchAll(/https:\/\/www\.youtube\.com\/watch\?v=([a-zA-Z0-9_-]+)/g)];
-    const ids = [...new Set(matches.map(m => m[1]))];
+    // 全動画数（YouTube以外も含む）
+    const allMatches = [...html.matchAll(/<a[^>]+href="([^"]+)"[^>]*>/g)];
+    const totalAll = allMatches.length;
+
+    // YouTube のみ抽出
+    const ytMatches = [...html.matchAll(/https:\/\/www\.youtube\.com\/watch\?v=([a-zA-Z0-9_-]+)/g)];
+    const youtubeList = [...new Set(ytMatches.map(m => m[1]))];
 
     res.status(200).json({
-      page,
-      count: ids.length,
-      videos: ids
+      first,
+      totalAll,
+      youtubeList
     });
+
   } catch (err) {
     res.status(500).json({ error: err.toString() });
   }
