@@ -128,20 +128,14 @@
   </main>
 
   <script>
-  let currentPage = 0;
-  let buffer = [];        // 次ページに持ち越す余り
-  let displayList = [];   // 今のページで表示する50件
-  let displayIndex = 0;   // 今何件表示したか
-
-  const PAGE_LIMIT = 50;
-  const PAGE_SIZE = 10;
+  let nextFirst = 0;        // 次に読み込む first の値
+  let loading = false;
 
   const resultsEl = document.getElementById("results");
   const searchBtn = document.getElementById("searchBtn");
   const inputEl = document.getElementById("q");
-  const nextPageBtn = document.getElementById("nextPageBtn");
 
-  // 「もっと読み込む」ボタンを JS で作る
+  // 「もっと読み込む」ボタン
   const loadMoreBtn = document.createElement("button");
   loadMoreBtn.textContent = "もっと読み込む";
   loadMoreBtn.style.padding = "10px 20px";
@@ -152,91 +146,57 @@
   loadMoreBtn.style.cursor = "pointer";
   loadMoreBtn.style.display = "none";
   loadMoreBtn.style.margin = "20px auto";
-  loadMoreBtn.style.display = "none";
   resultsEl.after(loadMoreBtn);
 
-  searchBtn.addEventListener("click", () => startPage(0));
+  searchBtn.addEventListener("click", startSearch);
   inputEl.addEventListener("keydown", (e) => {
-    if (e.key === "Enter") startPage(0);
+    if (e.key === "Enter") startSearch();
   });
 
-  nextPageBtn.addEventListener("click", () => startPage(currentPage + 1));
   loadMoreBtn.addEventListener("click", loadMore);
 
-  async function fetchPage(q, first) {
-    const res = await fetch(`/api/search?q=${encodeURIComponent(q)}&first=${first}`);
-    return await res.json();
-  }
-
-  async function startPage(page) {
+  function startSearch() {
     const q = inputEl.value.trim();
     if (!q) return;
 
-    currentPage = page;
     resultsEl.innerHTML = "";
-    nextPageBtn.style.display = "none";
+    nextFirst = 0;
     loadMoreBtn.style.display = "none";
 
-    // 今のページの50件を作る
-    displayList = [...buffer];
-    buffer = [];
-    displayIndex = 0;
-
-    let first = page === 0 ? 0 : window.pageFirstList[page];
-    let nextFirst = first;
-
-    // 50件集まるまで自動で次ページを読み込む
-    while (displayList.length < PAGE_LIMIT) {
-      const data = await fetchPage(q, nextFirst);
-
-      const youtube = data.youtubeList;
-      const pageCount = data.pageCount;
-
-      nextFirst = nextFirst + pageCount;
-
-      // 見つかった順（A案）で追加
-      for (let id of youtube) {
-        if (displayList.length < PAGE_LIMIT) {
-          displayList.push(id);
-        } else {
-          buffer.push(id);
-        }
-      }
-
-      if (youtube.length === 0) break;
-    }
-
-    // 次ページの first を保存
-    window.pageFirstList = window.pageFirstList || [];
-    window.pageFirstList[page + 1] = nextFirst;
-
-    // 最初の10件を表示
     loadMore();
   }
 
-  function loadMore() {
-    const chunk = displayList.slice(displayIndex, displayIndex + PAGE_SIZE);
-    displayIndex += PAGE_SIZE;
+  async function loadMore() {
+    if (loading) return;
+    loading = true;
 
-    chunk.forEach(id => {
+    const q = inputEl.value.trim();
+    const res = await fetch(`/api/search?q=${encodeURIComponent(q)}&first=${nextFirst}`);
+    const data = await res.json();
+
+    const youtube = data.youtubeList;
+
+    // 10件表示
+    youtube.forEach(id => {
       const div = document.createElement("div");
       div.className = "video-item";
       div.innerHTML = `<iframe src="https://www.youtube.com/embed/${id}" allowfullscreen></iframe>`;
       resultsEl.appendChild(div);
     });
 
-    // まだ表示していない分がある
-    if (displayIndex < displayList.length) {
-      loadMoreBtn.style.display = "block";
-    } else {
-      loadMoreBtn.style.display = "none";
+    // 次の first を10増やす
+    nextFirst += 10;
 
-      // 50件表示し終わった → 次のページへ
-      if (buffer.length > 0) {
-        nextPageBtn.style.display = "block";
-      }
+    // YouTube が10件未満ならもう終わり
+    if (youtube.length < 10) {
+      loadMoreBtn.style.display = "none";
+    } else {
+      loadMoreBtn.style.display = "block";
     }
+
+    loading = false;
   }
-  </script>
+</script>
+
 </body>
 </html>
