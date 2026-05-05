@@ -19,14 +19,39 @@ export default async function handler(req, res) {
 
     const html = await response.text();
 
-    // YouTube の動画IDだけ抜き出す
-    const ytMatches = [...html.matchAll(/https:\/\/www\.youtube\.com\/watch\?v=([a-zA-Z0-9_-]+)/g)];
-    const youtubeList = [...new Set(ytMatches.map(m => m[1]))];
+    // YouTube動画カードを全部取る
+    const cards = [...html.matchAll(/mc_vtvc_card([\s\S]*?)<\/div>/g)];
+
+    const results = [];
+
+    for (const card of cards) {
+      const block = card[1];
+
+      // 動画ID
+      const idMatch = block.match(/youtube\.com\/watch\?v=([a-zA-Z0-9_-]+)/);
+      if (!idMatch) continue;
+      const id = idMatch[1];
+
+      // 視聴回数
+      const viewsMatch = block.match(/([\d,.万億兆]+)\s*回視聴/);
+      const views = viewsMatch ? viewsMatch[1] : null;
+
+      // 投稿日（何年前・何日前）
+      const ageMatch = block.match(/回視聴\s*·\s*([^<]+)/);
+      const age = ageMatch ? ageMatch[1].trim() : null;
+
+      results.push({
+        id,
+        views,
+        age,
+      });
+    }
 
     res.status(200).json({
       first,
-      youtubeList, // ここに最大10件くらい入る想定
+      videos: results, // ← ここに {id, views, age} が入る
     });
+
   } catch (err) {
     res.status(500).json({ error: err.toString() });
   }
