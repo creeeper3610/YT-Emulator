@@ -128,16 +128,16 @@
   </main>
 
   <script>
-    let currentPage = 0;
-  　let buffer = []; // 次ページに持ち越す余り
-  　const PAGE_LIMIT = 50;
-  　const PAGE_SIZE = 10;
+  let currentPage = 0;
+  let buffer = []; // 次ページに持ち越す余り
+  const PAGE_LIMIT = 50;
+  const PAGE_SIZE = 10;
 
-  　const resultsEl = document.getElementById("results");
-  　const nextPageBtn = document.getElementById("nextPageBtn");
-  　const prevPageBtn = document.getElementById("prevPageBtn");
-  　const inputEl = document.getElementById("q");
-  　const searchBtn = document.getElementById("searchBtn");
+  const resultsEl = document.getElementById("results");
+  const nextPageBtn = document.getElementById("nextPageBtn");
+  const prevPageBtn = document.getElementById("prevPageBtn");
+  const inputEl = document.getElementById("q");
+  const searchBtn = document.getElementById("searchBtn");
 
   searchBtn.addEventListener("click", () => startPage(0));
   inputEl.addEventListener("keydown", (e) => {
@@ -221,6 +221,7 @@
     loadMore();
   }
 </script>
+
 
 </body>
 </html>
