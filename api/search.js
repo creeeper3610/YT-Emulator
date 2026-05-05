@@ -13,17 +13,14 @@ export default async function handler(req, res) {
     const response = await fetch(url, {
       headers: {
         "User-Agent":
-          "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36",
+          "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36 Edg/120.0.0.0",
       },
     });
 
     const html = await response.text();
-    res.send(html);
-    return;
 
-
-    // YouTube動画カードを全部取る
-    const cards = [...html.matchAll(/mc_vtvc_card([\s\S]*?)<\/div>/g)];
+    // ★ 新しい動画カード構造に対応
+    const cards = [...html.matchAll(/<div class="dg_u">([\s\S]*?)<\/div>\s*<\/div>/g)];
 
     const results = [];
 
@@ -36,20 +33,27 @@ export default async function handler(req, res) {
       const id = idMatch[1];
 
       // タイトル
-      const titleMatch = block.match(/title="([^"]+)"/);
-      const title = titleMatch ? titleMatch[1] : null;
+      const titleMatch = block.match(/mc_vtvc_title[^>]*>([^<]+)/);
+      const title = titleMatch ? titleMatch[1].trim() : null;
 
       // チャンネル名
-      const channelMatch = block.match(/mc_vtvc_meta">([^<]+)</);
+      const channelMatch = block.match(/mc_vtvc_channel[^>]*>([^<]+)/);
       const channel = channelMatch ? channelMatch[1].trim() : null;
 
-      // 視聴回数
-      const viewsMatch = block.match(/([\d,.万億兆]+)\s*回視聴/);
-      const views = viewsMatch ? viewsMatch[1] : null;
+      // 視聴回数＋投稿日
+      const metaMatch = block.match(/mc_vtvc_meta[^>]*>([^<]+)/);
+      let views = null;
+      let age = null;
 
-      // 投稿日（何日前 / 何年前）
-      const ageMatch = block.match(/回視聴\s*·\s*([^<]+)/);
-      const age = ageMatch ? ageMatch[1].trim() : null;
+      if (metaMatch) {
+        const meta = metaMatch[1];
+
+        const viewsMatch = meta.match(/([\d,.万億兆]+)\s*回視聴/);
+        if (viewsMatch) views = viewsMatch[1];
+
+        const ageMatch = meta.match(/回視聴\s*·\s*(.+)/);
+        if (ageMatch) age = ageMatch[1];
+      }
 
       results.push({
         id,
