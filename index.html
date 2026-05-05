@@ -2,7 +2,7 @@
 <html lang="ja">
 <head>
   <meta charset="UTF-8" />
-  <title>YouTube 検索エミュレーター</title>
+  <title>YouTube検索（Bing経由）</title>
   <meta name="viewport" content="width=device-width, initial-scale=1" />
 
   <style>
@@ -11,7 +11,7 @@
       padding: 0;
       background: #050505;
       color: #f5f5f5;
-      font-family: system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+      font-family: system-ui, sans-serif;
     }
 
     header {
@@ -57,172 +57,124 @@
       padding: 12px;
     }
 
+    /* ★ ここが重要：横2 × 縦5 の10個レイアウト */
     #results {
       display: grid;
       grid-template-columns: repeat(2, minmax(0, 1fr));
       gap: 16px;
     }
 
-    @media (max-width: 640px) {
-      #results {
-        grid-template-columns: 1fr;
-      }
-    }
-
-    .video-item {
-      background: #111;
-      padding: 8px;
-      border-radius: 8px;
-      box-shadow: 0 0 0 1px #222;
-    }
-
     .video-item iframe {
+      width: 100%;
+      aspect-ratio: 16 / 9;
       border: none;
       border-radius: 6px;
-      width: 100%;
-      height: 200px;
     }
 
-    .page-buttons {
+    .pager-buttons {
       display: flex;
       justify-content: center;
       gap: 12px;
       margin: 20px 0;
     }
 
-    .page-buttons button {
+    .pager-buttons button {
       padding: 10px 20px;
       border-radius: 999px;
       border: none;
-      background: #22c55e;
-      color: #000;
-      font-weight: 600;
       cursor: pointer;
+      font-size: 14px;
     }
 
-    #status {
-      text-align: center;
-      margin-top: 12px;
-      font-size: 14px;
-      color: #aaa;
+    .pager-prev {
+      background: #6b7280;
+      color: #fff;
+    }
+
+    .pager-next {
+      background: #3b82f6;
+      color: #fff;
     }
   </style>
 </head>
+
 <body>
   <header>
-    <h1>YouTube 検索エミュレーター</h1>
+    <h1>YouTube検索（Bingフィルター）</h1>
     <div class="search-box">
-      <input id="q" type="text" placeholder="キーワードを入力（例：Minecraft, 猫）" />
+      <input id="q" type="text" placeholder="キーワードを入力" />
       <button id="searchBtn">検索</button>
     </div>
-    <div id="status"></div>
   </header>
 
   <main>
     <div id="results"></div>
 
-    <div class="page-buttons">
-      <button id="prevPageBtn" style="display:none;">前のページ</button>
-      <button id="nextPageBtn" style="display:none;">次のページ</button>
-  　</div>
+    <div class="pager-buttons">
+      <button id="prevPageBtn" class="pager-prev" style="display:none;">前のページ</button>
+      <button id="nextPageBtn" class="pager-next" style="display:none;">次のページ</button>
+    </div>
   </main>
 
   <script>
-  let currentFirst = 0;      // 今のページの first 値（0,10,20,...）
-  const PAGE_SIZE = 10;
+    let currentFirst = 0;      // 0,10,20,30...
+    const PAGE_SIZE = 10;
 
-  const resultsEl = document.getElementById("results");
-  const searchBtn = document.getElementById("searchBtn");
-  const inputEl = document.getElementById("q");
+    const resultsEl = document.getElementById("results");
+    const searchBtn = document.getElementById("searchBtn");
+    const inputEl = document.getElementById("q");
+    const prevPageBtn = document.getElementById("prevPageBtn");
+    const nextPageBtn = document.getElementById("nextPageBtn");
 
-  // 「次のページ」ボタンを JS で作る
-  const nextPageBtn = document.createElement("button");
-  nextPageBtn.textContent = "次のページ";
-  nextPageBtn.style.padding = "10px 20px";
-  nextPageBtn.style.borderRadius = "999px";
-  nextPageBtn.style.border = "none";
-  nextPageBtn.style.background = "#3b82f6";
-  nextPageBtn.style.color = "#fff";
-  nextPageBtn.style.cursor = "pointer";
-  nextPageBtn.style.display = "none";
-  nextPageBtn.style.margin = "20px auto";
-  resultsEl.after(nextPageBtn);
-
-  // （必要なら）前のページボタンも作れる
-  const prevPageBtn = document.createElement("button");
-  prevPageBtn.textContent = "前のページ";
-  prevPageBtn.style.padding = "10px 20px";
-  prevPageBtn.style.borderRadius = "999px";
-  prevPageBtn.style.border = "none";
-  prevPageBtn.style.background = "#6b7280";
-  prevPageBtn.style.color = "#fff";
-  prevPageBtn.style.cursor = "pointer";
-  prevPageBtn.style.display = "none";
-  prevPageBtn.style.margin = "20px 10px 20px 0";
-  resultsEl.before(prevPageBtn);
-
-  searchBtn.addEventListener("click", startSearch);
-  inputEl.addEventListener("keydown", (e) => {
-    if (e.key === "Enter") startSearch();
-  });
-
-  nextPageBtn.addEventListener("click", () => {
-    currentFirst += PAGE_SIZE;   // 0→10→20→30...
-    loadPage();
-  });
-
-  prevPageBtn.addEventListener("click", () => {
-    if (currentFirst >= PAGE_SIZE) {
-      currentFirst -= PAGE_SIZE; // 20→10→0...
-      loadPage();
-    }
-  });
-
-  function startSearch() {
-    const q = inputEl.value.trim();
-    if (!q) return;
-
-    currentFirst = 0;
-    loadPage();
-  }
-
-  async function loadPage() {
-    const q = inputEl.value.trim();
-    if (!q) return;
-
-    // 一旦表示をクリア（1ページ＝10件だけ表示）
-    resultsEl.innerHTML = "";
-
-    const res = await fetch(`/api/search?q=${encodeURIComponent(q)}&first=${currentFirst}`);
-    const data = await res.json();
-
-    const youtube = data.youtubeList || [];
-
-    // 10件分を iframe で表示
-    youtube.forEach(id => {
-      const div = document.createElement("div");
-      div.className = "video-item";
-      div.innerHTML = `<iframe src="https://www.youtube.com/embed/${id}" allowfullscreen></iframe>`;
-      resultsEl.appendChild(div);
+    searchBtn.addEventListener("click", startSearch);
+    inputEl.addEventListener("keydown", (e) => {
+      if (e.key === "Enter") startSearch();
     });
 
-    // 前のページボタンの表示制御
-    if (currentFirst > 0) {
-      prevPageBtn.style.display = "inline-block";
-    } else {
-      prevPageBtn.style.display = "none";
+    prevPageBtn.addEventListener("click", () => {
+      if (currentFirst >= PAGE_SIZE) {
+        currentFirst -= PAGE_SIZE;
+        loadPage();
+      }
+    });
+
+    nextPageBtn.addEventListener("click", () => {
+      currentFirst += PAGE_SIZE;
+      loadPage();
+    });
+
+    function startSearch() {
+      const q = inputEl.value.trim();
+      if (!q) return;
+
+      currentFirst = 0;
+      loadPage();
     }
 
-    // 次のページボタンの表示制御
-    // 10件未満しか返ってこなかったら「もう次はない」と判断して非表示
-    if (youtube.length < PAGE_SIZE) {
-      nextPageBtn.style.display = "none";
-    } else {
-      nextPageBtn.style.display = "inline-block";
+    async function loadPage() {
+      const q = inputEl.value.trim();
+      if (!q) return;
+
+      resultsEl.innerHTML = "";
+
+      const res = await fetch(`/api/search?q=${encodeURIComponent(q)}&first=${currentFirst}`);
+      const data = await res.json();
+
+      const youtube = data.youtubeList || [];
+
+      youtube.forEach(id => {
+        const div = document.createElement("div");
+        div.className = "video-item";
+        div.innerHTML = `<iframe src="https://www.youtube.com/embed/${id}" allowfullscreen></iframe>`;
+        resultsEl.appendChild(div);
+      });
+
+      // 前のページボタン
+      prevPageBtn.style.display = currentFirst > 0 ? "inline-block" : "none";
+
+      // 次のページボタン（10件未満なら終わり）
+      nextPageBtn.style.display = youtube.length < PAGE_SIZE ? "none" : "inline-block";
     }
-  }
-</script>
-
-
+  </script>
 </body>
 </html>
