@@ -18,6 +18,9 @@ export default async function handler(req, res) {
     });
 
     const html = await response.text();
+    res.send(html);
+    return;
+
 
     // YouTube動画カードを全部取る
     const cards = [...html.matchAll(/mc_vtvc_card([\s\S]*?)<\/div>/g)];
