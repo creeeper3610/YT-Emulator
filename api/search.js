@@ -1,11 +1,8 @@
-import * as cheerio from "cheerio";
-
 export default async function handler(req, res) {
   try {
     const q = req.query.q;
     const url = `https://www.youtube.com/results?search_query=${encodeURIComponent(q)}`;
 
-    // Node 18 以降は fetch が標準搭載
     const response = await fetch(url, {
       headers: {
         "User-Agent":
@@ -14,18 +11,34 @@ export default async function handler(req, res) {
     });
 
     const html = await response.text();
-    const $ = cheerio.load(html);
 
-    const ids = [];
+    // ytInitialData を抽出
+    const jsonText = html.match(/ytInitialData"\]\s*=\s*(\{.*?\});/s);
+    if (!jsonText) {
+      return res.status(500).json({ error: "ytInitialData not found" });
+    }
 
-    $("a#video-title").each((i, el) => {
-      const href = $(el).attr("href");
-      if (href && href.startsWith("/watch?v=")) {
-        ids.push(href.replace("/watch?v=", ""));
-      }
-    });
+    const data = JSON.parse(jsonText[1]);
 
-    res.status(200).json(ids);
+    // 動画リストを抽出
+    const contents =
+      data.contents?.twoColumnSearchResultsRenderer?.primaryContents
+        ?.sectionListRenderer?.contents?.[0]?.itemSectionRenderer?.contents || [];
+
+    const results = [];
+
+    for (const item of contents) {
+      const video = item.videoRenderer;
+      if (!video) continue;
+
+      results.push({
+        id: video.videoId,
+        title: video.title?.runs?.[0]?.text || "",
+        thumbnail: video.thumbnail?.thumbnails?.pop()?.url || "",
+      });
+    }
+
+    res.status(200).json(results);
   } catch (err) {
     res.status(500).json({ error: err.toString() });
   }
