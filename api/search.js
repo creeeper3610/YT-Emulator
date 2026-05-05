@@ -12,42 +12,17 @@ export default async function handler(req, res) {
 
     const html = await response.text();
 
-    // ytInitialData を複数パターンで探す
-    const match =
-      html.match(/ytInitialData"\]
+    // ytInitialData を含む script タグを全部抽出
+    const scripts = [...html.matchAll(/<script[^>]*>([\s\S]*?)<\/script>/g)]
+      .map(m => m[1])
+      .filter(s => s.includes("ytInitialData"));
 
-\s*=\s*(\{.*?\});/s) ||
-      html.match(/ytInitialData\s*=\s*(\{.*?\});/s) ||
-      html.match(/window
+    // 何個見つかったか返す
+    return res.status(200).json({
+      foundScripts: scripts.length,
+      samples: scripts.slice(0, 2) // 最初の2つだけ返す（重すぎ防止）
+    });
 
-\["ytInitialData"\]
-
-\s*=\s*(\{.*?\});/s);
-
-    if (!match) {
-      return res.status(500).json({ error: "ytInitialData not found" });
-    }
-
-    const data = JSON.parse(match[1]);
-
-    const contents =
-      data.contents?.twoColumnSearchResultsRenderer?.primaryContents
-        ?.sectionListRenderer?.contents?.[0]?.itemSectionRenderer?.contents || [];
-
-    const results = [];
-
-    for (const item of contents) {
-      const video = item.videoRenderer;
-      if (!video) continue;
-
-      results.push({
-        id: video.videoId,
-        title: video.title?.runs?.[0]?.text || "",
-        thumbnail: video.thumbnail?.thumbnails?.pop()?.url || "",
-      });
-    }
-
-    res.status(200).json(results);
   } catch (err) {
     res.status(500).json({ error: err.toString() });
   }
