@@ -3,7 +3,12 @@ export default async function handler(req, res) {
     const q = req.query.q;
     const first = parseInt(req.query.first || "0", 10);
 
-    const url = `https://www.bing.com/videos/search?q=${encodeURIComponent(q)}&first=${first}&form=QBVLPG`;
+    const url =
+      "https://www.bing.com/videos/search" +
+      `?q=${encodeURIComponent(q)}` +
+      `&first=${first}` +
+      "&qft=+filterui:site-youtube.com" +
+      "&FORM=VRFLTR";
 
     const response = await fetch(url, {
       headers: {
@@ -14,15 +19,14 @@ export default async function handler(req, res) {
 
     const html = await response.text();
 
-    // YouTube のみ抽出
+    // YouTube の動画IDだけ抜き出す
     const ytMatches = [...html.matchAll(/https:\/\/www\.youtube\.com\/watch\?v=([a-zA-Z0-9_-]+)/g)];
     const youtubeList = [...new Set(ytMatches.map(m => m[1]))];
 
     res.status(200).json({
       first,
-      youtubeList
+      youtubeList, // ここに最大10件くらい入る想定
     });
-
   } catch (err) {
     res.status(500).json({ error: err.toString() });
   }
