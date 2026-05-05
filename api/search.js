@@ -18,6 +18,9 @@ export default async function handler(req, res) {
     });
 
     const html = await response.text();
+    res.send(html);
+    return;
+
 
     // ★ 新しい動画カード構造に対応
     const cards = [...html.matchAll(/<div class="dg_u">([\s\S]*?)<\/div>\s*<\/div>/g)];
