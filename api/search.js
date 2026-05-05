@@ -15,7 +15,7 @@ export default async function handler(req, res) {
     const html = await response.text();
 
     // 全動画数（YouTube以外も含む）
-    const allMatches = [...html.matchAll(/<a[^>]+href="([^"]+)"[^>]*>/g)];
+    const allMatches = [...html.matchAll(/mc_vtvc_card/g)];
     const totalAll = allMatches.length;
 
     // YouTube のみ抽出
