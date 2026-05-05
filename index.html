@@ -129,23 +129,39 @@
 
   <script>
   let currentPage = 0;
-  let buffer = []; // 次ページに持ち越す余り
+  let buffer = [];        // 次ページに持ち越す余り
+  let displayList = [];   // 今のページで表示する50件
+  let displayIndex = 0;   // 今何件表示したか
+
   const PAGE_LIMIT = 50;
   const PAGE_SIZE = 10;
 
   const resultsEl = document.getElementById("results");
-  const nextPageBtn = document.getElementById("nextPageBtn");
-  const prevPageBtn = document.getElementById("prevPageBtn");
-  const inputEl = document.getElementById("q");
   const searchBtn = document.getElementById("searchBtn");
+  const inputEl = document.getElementById("q");
+  const nextPageBtn = document.getElementById("nextPageBtn");
+
+  // 「もっと読み込む」ボタンを JS で作る
+  const loadMoreBtn = document.createElement("button");
+  loadMoreBtn.textContent = "もっと読み込む";
+  loadMoreBtn.style.padding = "10px 20px";
+  loadMoreBtn.style.borderRadius = "999px";
+  loadMoreBtn.style.border = "none";
+  loadMoreBtn.style.background = "#3b82f6";
+  loadMoreBtn.style.color = "#fff";
+  loadMoreBtn.style.cursor = "pointer";
+  loadMoreBtn.style.display = "none";
+  loadMoreBtn.style.margin = "20px auto";
+  loadMoreBtn.style.display = "none";
+  resultsEl.after(loadMoreBtn);
 
   searchBtn.addEventListener("click", () => startPage(0));
   inputEl.addEventListener("keydown", (e) => {
     if (e.key === "Enter") startPage(0);
   });
 
-  prevPageBtn.addEventListener("click", () => startPage(currentPage - 1));
   nextPageBtn.addEventListener("click", () => startPage(currentPage + 1));
+  loadMoreBtn.addEventListener("click", loadMore);
 
   async function fetchPage(q, first) {
     const res = await fetch(`/api/search?q=${encodeURIComponent(q)}&first=${first}`);
@@ -159,35 +175,34 @@
     currentPage = page;
     resultsEl.innerHTML = "";
     nextPageBtn.style.display = "none";
-    prevPageBtn.style.display = page > 0 ? "block" : "none";
+    loadMoreBtn.style.display = "none";
 
-    // まず余りを使う
-    let collected = [...buffer];
+    // 今のページの50件を作る
+    displayList = [...buffer];
     buffer = [];
+    displayIndex = 0;
 
-    // ページごとの first を保存
     let first = page === 0 ? 0 : window.pageFirstList[page];
     let nextFirst = first;
 
     // 50件集まるまで自動で次ページを読み込む
-    while (collected.length < PAGE_LIMIT) {
+    while (displayList.length < PAGE_LIMIT) {
       const data = await fetchPage(q, nextFirst);
 
       const youtube = data.youtubeList;
-      const totalAll = data.totalAll;
+      const pageCount = data.pageCount;
 
-      nextFirst = totalAll;
+      nextFirst = nextFirst + pageCount;
 
       // 見つかった順（A案）で追加
       for (let id of youtube) {
-        if (collected.length < PAGE_LIMIT) {
-          collected.push(id);
+        if (displayList.length < PAGE_LIMIT) {
+          displayList.push(id);
         } else {
           buffer.push(id);
         }
       }
 
-      // YouTube が0件なら終了
       if (youtube.length === 0) break;
     }
 
@@ -195,33 +210,33 @@
     window.pageFirstList = window.pageFirstList || [];
     window.pageFirstList[page + 1] = nextFirst;
 
-    // 10件ずつ表示
-    let index = 0;
-
-    function loadMore() {
-      const chunk = collected.slice(index, index + PAGE_SIZE);
-      index += PAGE_SIZE;
-
-      chunk.forEach(id => {
-        const div = document.createElement("div");
-        div.className = "video-item";
-        div.innerHTML = `<iframe src="https://www.youtube.com/embed/${id}" allowfullscreen></iframe>`;
-        resultsEl.appendChild(div);
-      });
-
-      if (index < collected.length) {
-        // まだ表示してない分がある
-        setTimeout(loadMore, 0);
-      } else {
-        // 50件表示し終わったら次ページボタン
-        if (buffer.length > 0) nextPageBtn.style.display = "block";
-      }
-    }
-
+    // 最初の10件を表示
     loadMore();
   }
-</script>
 
+  function loadMore() {
+    const chunk = displayList.slice(displayIndex, displayIndex + PAGE_SIZE);
+    displayIndex += PAGE_SIZE;
 
+    chunk.forEach(id => {
+      const div = document.createElement("div");
+      div.className = "video-item";
+      div.innerHTML = `<iframe src="https://www.youtube.com/embed/${id}" allowfullscreen></iframe>`;
+      resultsEl.appendChild(div);
+    });
+
+    // まだ表示していない分がある
+    if (displayIndex < displayList.length) {
+      loadMoreBtn.style.display = "block";
+    } else {
+      loadMoreBtn.style.display = "none";
+
+      // 50件表示し終わった → 次のページへ
+      if (buffer.length > 0) {
+        nextPageBtn.style.display = "block";
+      }
+    }
+  }
+  </script>
 </body>
 </html>
