@@ -46,26 +46,17 @@
       gap: 8px;
     }
 
-    .search-logo {
-      height: 64px;
-    }
-    header img.search-logo {
-      display: block;
-      margin: 0 auto 8px 0; /* 左上に固定 */
-    }
     header {
-      position: relative; /* アイコンの絶対配置の基準にする */
+      position: relative;
     }
 
     header .search-logo {
       position: absolute;
       top: 16px;
       left: 16px;
-      height: 48px; /* 好きに調整OK */
+      height: 48px;
       margin: 0;
     }
-
-
 
     .search-box input {
       width: 60%;
@@ -141,25 +132,20 @@
       background: #3b82f6;
       color: #fff;
     }
-    
   </style>
 </head>
 
 <body>
   <header>
-
-    <!-- 🔰 横長アイコンをヘッダー左上に独立配置 -->
     <img src="ver.1/youtube_search_tool.svg" alt="logo" class="search-logo">
     <h1>YouTube Search Tool</h1>
 
-    <!-- 🔧 修正①：<<div → <div -->
     <div class="search-box">
       <div class="search-center">
         <input type="text" id="keyword" placeholder="キーワードを入力">
         <button id="search-btn">search</button>
       </div>
     </div>
-
   </header>
 
   <main>
@@ -176,13 +162,8 @@
     const PAGE_SIZE = 10;
 
     const resultsEl = document.getElementById("results");
-
-    /* 🔧 修正②：searchBtn → search-btn */
     const searchBtn = document.getElementById("search-btn");
-
-    /* 🔧 修正③：q → keyword */
     const inputEl = document.getElementById("keyword");
-
     const prevPageBtn = document.getElementById("prevPageBtn");
     const nextPageBtn = document.getElementById("nextPageBtn");
 
@@ -215,15 +196,18 @@
       const q = inputEl.value.trim();
       if (!q) return;
 
+      const res = await fetch(`/api/search?q=${encodeURIComponent(q)}&first=${currentFirst}`);
+      const data = await res.json();
+      const videos = data.videos;
+
+      renderVideos(videos);
+
+      prevPageBtn.style.display = currentFirst > 0 ? "inline-block" : "none";
+      nextPageBtn.style.display = videos.length < PAGE_SIZE ? "none" : "inline-block";
+    }
+
+    function renderVideos(videos) {
       resultsEl.innerHTML = "";
-
-     const res = await fetch(`/api/search?q=${encodeURIComponent(q)}`);
-     const data = await res.json();
-     const videos = data.videos;
-
-     // ★ フィルターなしで全部表示
-     renderVideos(videos);
-
 
       videos.forEach(v => {
         const div = document.createElement("div");
@@ -231,7 +215,6 @@
         div.innerHTML = `
           <iframe src="https://www.youtube.com/embed/${v.id}" allowfullscreen></iframe>
           <div class="meta">
-            <div>${v.title || ""}</div>
             <div>${v.channel || ""}</div>
             <div>
               ${v.views ? `${v.views} 回再生` : ""}
@@ -241,9 +224,6 @@
         `;
         resultsEl.appendChild(div);
       });
-
-      prevPageBtn.style.display = currentFirst > 0 ? "inline-block" : "none";
-      nextPageBtn.style.display = videos.length < PAGE_SIZE ? "none" : "inline-block";
     }
   </script>
 </body>
