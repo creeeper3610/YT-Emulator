@@ -217,7 +217,8 @@
 
       resultsEl.innerHTML = "";
 
-      const res = await fetch(`/api/search?q=${encodeURIComponent(q)}&first=${currentFirst}`);
+      const res = await fetch(`/api-ver-1/search?q=${encodeURIComponent(q)}`)
+
       const data = await res.json();
 
       const videos = data.videos || [];
