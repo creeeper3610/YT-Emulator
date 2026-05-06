@@ -19,7 +19,7 @@ export default async function handler(req, res) {
 
     const html = await response.text();
 
-    // ★ 動画カードを抽出（mc_vtvc_video_◯◯ から始まるブロック）
+    // ★ 動画カード抽出（mc_vtvc_video_◯◯ から vrhdata 直前まで）
     const cards = [...html.matchAll(
       /<div id="mc_vtvc_video_[^"]+"([\s\S]*?)<div class="vrhdata"/g
     )];
@@ -42,7 +42,15 @@ export default async function handler(req, res) {
 
       // ★ ② 視聴回数（meta_vc_content）
       const viewsMatch = block.match(/<span class="meta_vc_content">([^<]+)<\/span>/);
-      const views = viewsMatch ? viewsMatch[1].trim() : null;
+      let views = viewsMatch ? viewsMatch[1].trim() : null;
+
+      // 不要な「視聴回数:」「回」を削除
+      if (views) {
+        views = views
+          .replace("視聴回数:", "")
+          .replace("回", "")
+          .trim();
+      }
 
       // ★ ③ 投稿日（meta_pd_content）
       const ageMatch = block.match(/<span class="meta_pd_content">([^<]+)<\/span>/);
