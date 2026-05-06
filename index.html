@@ -44,6 +44,11 @@
     .search-logo {
       height: 64px;
     }
+    header img.search-logo {
+      display: block;
+      margin: 0 auto 8px 0; /* 左上に固定 */
+    }
+
 
     .search-box input {
       width: 60%;
@@ -119,17 +124,19 @@
       background: #3b82f6;
       color: #fff;
     }
+    
   </style>
 </head>
 
 <body>
   <header>
-    <h1>YouTube検索（Bingフィルター）</h1>
+
+    <!-- 🔰 横長アイコンをヘッダー左上に独立配置 -->
+    <img src="youtube_search_tool.svg" alt="logo" class="search-logo">
+    <h1>YouTube search tool</h1>
 
     <!-- 🔧 修正①：<<div → <div -->
     <div class="search-box">
-      <img src="youtube_search_tool.svg" alt="logo" class="search-logo">
-
       <div class="search-center">
         <input type="text" id="keyword" placeholder="キーワードを入力">
         <button id="search-btn">検索</button>
