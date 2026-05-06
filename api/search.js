@@ -8,10 +8,9 @@ export default async function handler(req, res) {
       `?q=${encodeURIComponent(q)}` +
       `&first=${first}` +
       "&qft=+filterui:site-youtube.com" +
-      "&mkt=ja-JP" +   // ★ 日本向け市場
-      "&cc=JP" +       // ★ 国コードを日本に
+      "&mkt=ja-JP" +
+      "&cc=JP" +
       "&FORM=VRFLTR";
-
 
     const response = await fetch(url, {
       headers: {
@@ -22,7 +21,6 @@ export default async function handler(req, res) {
 
     const html = await response.text();
 
-    // ★ 動画カード抽出（mc_vtvc_video_◯◯ から vrhdata 直前まで）
     const cards = [...html.matchAll(
       /<div id="mc_vtvc_video_[^"]+"([\s\S]*?)<div class="vrhdata"/g
     )];
@@ -36,18 +34,16 @@ export default async function handler(req, res) {
       const ourlMatch = block.match(/ourl="([^"]+)"/);
       const youtubeUrl = ourlMatch ? ourlMatch[1] : null;
 
-      // YouTube ID 抽出
       let id = null;
       if (youtubeUrl) {
         const idMatch = youtubeUrl.match(/v=([a-zA-Z0-9_-]+)/);
         id = idMatch ? idMatch[1] : null;
       }
 
-      // ★ ② 視聴回数（meta_vc_content）
+      // ★ ② 視聴回数
       const viewsMatch = block.match(/<span class="meta_vc_content">([^<]+)<\/span>/);
       let views = viewsMatch ? viewsMatch[1].trim() : null;
 
-      // 不要な「視聴回数:」「回」を削除
       if (views) {
         views = views
           .replace("視聴回数:", "")
@@ -55,14 +51,19 @@ export default async function handler(req, res) {
           .trim();
       }
 
-      // ★ ③ 投稿日（meta_pd_content）
+      // ★ ③ 投稿日
       const ageMatch = block.match(/<span class="meta_pd_content">([^<]+)<\/span>/);
       const age = ageMatch ? ageMatch[1].trim() : null;
+
+      // ★ ④ チャンネル名（追加した部分）
+      const channelMatch = block.match(/<span class="mc_vtvc_meta_channel">([^<]+)<\/span>/);
+      const channel = channelMatch ? channelMatch[1].trim() : null;
 
       results.push({
         id,
         views,
         age,
+        channel,   // ★ 追加
       });
     }
 
