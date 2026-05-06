@@ -19,36 +19,32 @@ export default async function handler(req, res) {
 
     const html = await response.text();
 
-    // ★ mmeta と aria-label を同時に取る
+    // ★ 動画カードを抽出
     const cards = [...html.matchAll(
-      /mmeta="([^"]+)"[\s\S]*?aria-label="([^"]*)"/g
+      /<div id="mc_vtvc_video_[^"]+"([\s\S]*?)<\/div><\/div>/g
     )];
 
     const results = [];
 
     for (const card of cards) {
-      const rawMeta = card[1];
+      const block = card[1];
 
-      // mmeta JSON をデコード
-      const meta = JSON.parse(
-        rawMeta.replace(/&quot;/g, '"').replace(/&amp;/g, '&')
-      );
-
-      // YouTube ID
-      const idMatch = meta.murl.match(/v=([a-zA-Z0-9_-]+)/);
-      const id = idMatch ? idMatch[1] : null;
-
-      // 視聴回数（vsc があれば最優先）
-      let views = null;
-      if (meta.vsc) {
-        views = meta.vsc; // 生の数字（例：220000）
+      // YouTube ID（mmeta の murl から）
+      const murlMatch = block.match(/"murl":"([^"]+)"/);
+      let id = null;
+      if (murlMatch) {
+        const url = murlMatch[1];
+        const idMatch = url.match(/v=([a-zA-Z0-9_-]+)/);
+        id = idMatch ? idMatch[1] : null;
       }
 
-      // 投稿日（pdate があれば最優先）
-      let age = null;
-      if (meta.pdate) {
-        age = meta.pdate; // 例：2023-06-12
-      }
+      // 視聴回数
+      const viewsMatch = block.match(/<span class="meta_vc_content">([^<]+)<\/span>/);
+      const views = viewsMatch ? viewsMatch[1].trim() : null;
+
+      // 投稿日
+      const ageMatch = block.match(/<span class="meta_pd_content">([^<]+)<\/span>/);
+      const age = ageMatch ? ageMatch[1].trim() : null;
 
       results.push({
         id,
