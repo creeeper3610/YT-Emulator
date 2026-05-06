@@ -4,7 +4,7 @@
   <meta charset="UTF-8" />
   <title>MSBingを使ったYoutube検索ツール</title>
   <meta name="viewport" content="width=device-width, initial-scale=1" />
-  <img src="./ytst_icon.svg" alt="Site Icon" class="icon">
+  <link rel="icon" type="image/svg+xml" href="ytst_icon.svg">
   <style>
     body {
       margin: 0;
@@ -30,8 +30,12 @@
 
     .search-box {
       display: flex;
+      align-items: center;
       gap: 8px;
-      justify-content: center;
+    }
+
+    .search-logo {
+      height: 28px; /* 好きなサイズに調整してOK */
     }
 
     .search-box input {
@@ -116,9 +120,11 @@
   <header>
     <h1>YouTube検索（Bingフィルター）</h1>
     <div class="search-box">
-      <input id="q" type="text" placeholder="キーワードを入力" />
-      <button id="searchBtn">検索</button>
+      <img src="youtube_search_tool.svg" alt="logo" class="search-logo">
+      <input type="text" id="keyword" placeholder="キーワードを入力">
+      <button id="search-btn">検索</button>
     </div>
+
   </header>
 
   <main>
