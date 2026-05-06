@@ -217,15 +217,12 @@
 
       resultsEl.innerHTML = "";
 
-      const res = await fetch(`/api/search?q=${encodeURIComponent(q)}`);
-      const data = await res.json();
-      const videos = data.videos;
+     const res = await fetch(`/api/search?q=${encodeURIComponent(q)}`);
+     const data = await res.json();
+     const videos = data.videos;
 
-      // ★ 日本マイクロソフト株式会社 公式チャンネルだけに絞る
-      const filtered = videos.filter(v => v.channel === "日本マイクロソフト株式会社 公式チャンネル");
-
-      // ★ 絞った結果だけ表示
-      renderVideos(filtered);
+     // ★ フィルターなしで全部表示
+     renderVideos(videos);
 
 
       videos.forEach(v => {
