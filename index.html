@@ -31,13 +31,17 @@
     .search-box {
       display: flex;
       align-items: center;
+      justify-content: center; /* 全体は中央 */
       gap: 8px;
     }
-    header .search-box {
-      justify-content: center;
+
+    .search-center {
+      display: flex;
+      align-items: center;
+      gap: 8px;
     }
 
-
+    
     .search-logo {
       height: 64px; /* 好きなサイズに調整してOK */
     }
@@ -123,10 +127,13 @@
 <body>
   <header>
     <h1>YouTube検索（Bingフィルター）</h1>
-    <div class="search-box">
+    <<div class="search-box">
       <img src="youtube_search_tool.svg" alt="logo" class="search-logo">
-      <input type="text" id="keyword" placeholder="キーワードを入力">
-      <button id="search-btn">検索</button>
+
+      <div class="search-center">
+        <input type="text" id="keyword" placeholder="キーワードを入力">
+        <button id="search-btn">検索</button>
+      </div>
     </div>
 
   </header>
