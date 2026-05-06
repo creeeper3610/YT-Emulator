@@ -1,2 +1,1 @@
-# YT-Emulator
-作業用
+# Youtube Search Tool
