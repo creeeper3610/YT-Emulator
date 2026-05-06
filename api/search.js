@@ -19,7 +19,7 @@ export default async function handler(req, res) {
 
     const html = await response.text();
 
-    // ★ 動画カードを抽出
+    // ★ 動画カードを抽出（ourl と meta_xx が入っているブロック）
     const cards = [...html.matchAll(
       /<div id="mc_vtvc_video_[^"]+"([\s\S]*?)<\/div><\/div>/g
     )];
@@ -29,20 +29,22 @@ export default async function handler(req, res) {
     for (const card of cards) {
       const block = card[1];
 
-      // YouTube ID（mmeta の murl から）
-      const murlMatch = block.match(/"murl":"([^"]+)"/);
+      // ★ ① iframe 用の本物の YouTube URL（ourl=""）
+      const ourlMatch = block.match(/ourl="([^"]+)"/);
+      const youtubeUrl = ourlMatch ? ourlMatch[1] : null;
+
+      // YouTube ID 抽出
       let id = null;
-      if (murlMatch) {
-        const url = murlMatch[1];
-        const idMatch = url.match(/v=([a-zA-Z0-9_-]+)/);
+      if (youtubeUrl) {
+        const idMatch = youtubeUrl.match(/v=([a-zA-Z0-9_-]+)/);
         id = idMatch ? idMatch[1] : null;
       }
 
-      // 視聴回数
+      // ★ ② 視聴回数（meta_vc_content）
       const viewsMatch = block.match(/<span class="meta_vc_content">([^<]+)<\/span>/);
       const views = viewsMatch ? viewsMatch[1].trim() : null;
 
-      // 投稿日
+      // ★ ③ 投稿日（meta_pd_content）
       const ageMatch = block.match(/<span class="meta_pd_content">([^<]+)<\/span>/);
       const age = ageMatch ? ageMatch[1].trim() : null;
 
