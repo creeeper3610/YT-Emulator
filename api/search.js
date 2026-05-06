@@ -1,78 +1,251 @@
-export default async function handler(req, res) {
-  try {
-    const q = req.query.q;
-    const first = parseInt(req.query.first || "0", 10);
 
-    const url =
-      "https://www.bing.com/videos/search" +
-      `?q=${encodeURIComponent(q)}` +
-      `&first=${first}` +
-      "&qft=+filterui:site-youtube.com" +
-      "&mkt=ja-JP" +
-      "&cc=JP" +
-      "&FORM=VRFLTR";
-
-    const response = await fetch(url, {
-      headers: {
-        "User-Agent":
-          "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36 Edg/120.0.0.0",
-      },
-    });
-
-    const html = await response.text();
-
-    const cards = [...html.matchAll(
-      /<div id="mc_vtvc_video_[^"]+"([\s\S]*?)<div class="vrhdata"/g
-    )];
-
-    const results = [];
-
-    for (const card of cards) {
-      const block = card[1];
-
-      // ★ ① iframe 用の本物の YouTube URL（ourl=""）
-      const ourlMatch = block.match(/ourl="([^"]+)"/);
-      const youtubeUrl = ourlMatch ? ourlMatch[1] : null;
-
-      let id = null;
-      if (youtubeUrl) {
-        const idMatch = youtubeUrl.match(/v=([a-zA-Z0-9_-]+)/);
-        id = idMatch ? idMatch[1] : null;
-      }
-
-      // ★ ② 視聴回数
-      const viewsMatch = block.match(/<span class="meta_vc_content">([^<]+)<\/span>/);
-      let views = viewsMatch ? viewsMatch[1].trim() : null;
-
-      if (views) {
-        views = views
-          .replace("視聴回数:", "")
-          .replace("回", "")
-          .trim();
-      }
-
-      // ★ ③ 投稿日
-      const ageMatch = block.match(/<span class="meta_pd_content">([^<]+)<\/span>/);
-      const age = ageMatch ? ageMatch[1].trim() : null;
-
-      // ★ ④ チャンネル名（追加した部分）
-      const channelMatch = block.match(/<span class="mc_vtvc_meta_channel">([^<]+)<\/span>/);
-      const channel = channelMatch ? channelMatch[1].trim() : null;
-
-      results.push({
-        id,
-        views,
-        age,
-        channel,   // ★ 追加
-      });
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+  <meta charset="UTF-8" />
+  <title>youtube search tool</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <link rel="icon" type="image/svg+xml" href="ver.1/ytst_icon.svg">
+  <meta name="robots" content="noindex, nofollow">
+  <style>
+    header h1 {
+      text-align: center;
+      width: 100%;
     }
 
-    res.status(200).json({
-      first,
-      videos: results,
+    body {
+      margin: 0;
+      padding: 0;
+      background: #050505;
+      color: #f5f5f5;
+      font-family: system-ui, sans-serif;
+    }
+
+    header {
+      padding: 16px;
+      background: #111;
+      position: sticky;
+      top: 0;
+      z-index: 10;
+    }
+
+    h1 {
+      margin: 0 0 8px;
+      font-size: 20px;
+    }
+
+    .search-box {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 8px;
+    }
+
+    .search-center {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+
+    .search-logo {
+      height: 64px;
+    }
+    header img.search-logo {
+      display: block;
+      margin: 0 auto 8px 0; /* 左上に固定 */
+    }
+    header {
+      position: relative; /* アイコンの絶対配置の基準にする */
+    }
+
+    header .search-logo {
+      position: absolute;
+      top: 16px;
+      left: 16px;
+      height: 48px; /* 好きに調整OK */
+      margin: 0;
+    }
+
+
+
+    .search-box input {
+      width: 60%;
+      max-width: 400px;
+      padding: 8px 10px;
+      border-radius: 4px;
+      border: 1px solid #333;
+      background: #000;
+      color: #f5f5f5;
+    }
+
+    .search-box button {
+      padding: 8px 16px;
+      border-radius: 4px;
+      border: none;
+      background: #2563eb;
+      color: #fff;
+      cursor: pointer;
+    }
+
+    main {
+      padding: 12px;
+    }
+
+    #results {
+      display: grid;
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+      gap: 16px;
+    }
+
+    .video-item {
+      background: #111;
+      padding: 8px;
+      border-radius: 8px;
+      box-shadow: 0 0 0 1px #222;
+    }
+
+    .video-item iframe {
+      width: 100%;
+      aspect-ratio: 16 / 9;
+      border: none;
+      border-radius: 6px;
+    }
+
+    .meta {
+      margin-top: 6px;
+      font-size: 13px;
+      color: #ccc;
+      line-height: 1.4;
+    }
+
+    .pager-buttons {
+      display: flex;
+      justify-content: center;
+      gap: 12px;
+      margin: 20px 0;
+    }
+
+    .pager-buttons button {
+      padding: 10px 20px;
+      border-radius: 999px;
+      border: none;
+      cursor: pointer;
+      font-size: 14px;
+    }
+
+    .pager-prev {
+      background: #6b7280;
+      color: #fff;
+    }
+
+    .pager-next {
+      background: #3b82f6;
+      color: #fff;
+    }
+    
+  </style>
+</head>
+
+<body>
+  <header>
+
+    <!-- 🔰 横長アイコンをヘッダー左上に独立配置 -->
+    <img src="ver.1/youtube_search_tool.svg" alt="logo" class="search-logo">
+    <h1>YouTube Search Tool</h1>
+
+    <!-- 🔧 修正①：<<div → <div -->
+    <div class="search-box">
+      <div class="search-center">
+        <input type="text" id="keyword" placeholder="キーワードを入力">
+        <button id="search-btn">search</button>
+      </div>
+    </div>
+
+  </header>
+
+  <main>
+    <div id="results"></div>
+
+    <div class="pager-buttons">
+      <button id="prevPageBtn" class="pager-prev" style="display:none;">前のページ</button>
+      <button id="nextPageBtn" class="pager-next" style="display:none;">次のページ</button>
+    </div>
+  </main>
+
+  <script>
+    let currentFirst = 0;
+    const PAGE_SIZE = 10;
+
+    const resultsEl = document.getElementById("results");
+
+    /* 🔧 修正②：searchBtn → search-btn */
+    const searchBtn = document.getElementById("search-btn");
+
+    /* 🔧 修正③：q → keyword */
+    const inputEl = document.getElementById("keyword");
+
+    const prevPageBtn = document.getElementById("prevPageBtn");
+    const nextPageBtn = document.getElementById("nextPageBtn");
+
+    searchBtn.addEventListener("click", startSearch);
+    inputEl.addEventListener("keydown", (e) => {
+      if (e.key === "Enter") startSearch();
     });
 
-  } catch (err) {
-    res.status(500).json({ error: err.toString() });
-  }
-}
+    prevPageBtn.addEventListener("click", () => {
+      if (currentFirst >= PAGE_SIZE) {
+        currentFirst -= PAGE_SIZE;
+        loadPage();
+      }
+    });
+
+    nextPageBtn.addEventListener("click", () => {
+      currentFirst += PAGE_SIZE;
+      loadPage();
+    });
+
+    function startSearch() {
+      const q = inputEl.value.trim();
+      if (!q) return;
+
+      currentFirst = 0;
+      loadPage();
+    }
+
+    async function loadPage() {
+      const q = inputEl.value.trim();
+      if (!q) return;
+
+      resultsEl.innerHTML = "";
+
+     const res = await fetch(`/api/search?q=${encodeURIComponent(q)}`);
+     const data = await res.json();
+     const videos = data.videos;
+
+     // ★ フィルターなしで全部表示
+     renderVideos(videos);
+
+
+      videos.forEach(v => {
+        const div = document.createElement("div");
+        div.className = "video-item";
+        div.innerHTML = `
+          <iframe src="https://www.youtube.com/embed/${v.id}" allowfullscreen></iframe>
+          <div class="meta">
+            <div>${v.title || ""}</div>
+            <div>${v.channel || ""}</div>
+            <div>
+              ${v.views ? `${v.views} 回再生` : ""}
+              ${v.age ? ` · ${v.age}` : ""}
+            </div>
+          </div>
+        `;
+        resultsEl.appendChild(div);
+      });
+
+      prevPageBtn.style.display = currentFirst > 0 ? "inline-block" : "none";
+      nextPageBtn.style.display = videos.length < PAGE_SIZE ? "none" : "inline-block";
+    }
+  </script>
+</body>
+</html>
