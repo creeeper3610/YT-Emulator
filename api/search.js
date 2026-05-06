@@ -8,7 +8,10 @@ export default async function handler(req, res) {
       `?q=${encodeURIComponent(q)}` +
       `&first=${first}` +
       "&qft=+filterui:site-youtube.com" +
+      "&mkt=ja-JP" +   // ★ 日本向け市場
+      "&cc=JP" +       // ★ 国コードを日本に
       "&FORM=VRFLTR";
+
 
     const response = await fetch(url, {
       headers: {
