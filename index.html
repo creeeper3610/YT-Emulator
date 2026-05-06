@@ -31,7 +31,7 @@
     .search-box {
       display: flex;
       align-items: center;
-      justify-content: center; /* 全体は中央 */
+      justify-content: center;
       gap: 8px;
     }
 
@@ -41,9 +41,8 @@
       gap: 8px;
     }
 
-    
     .search-logo {
-      height: 64px; /* 好きなサイズに調整してOK */
+      height: 64px;
     }
 
     .search-box input {
@@ -69,7 +68,6 @@
       padding: 12px;
     }
 
-    /* ★ 横2 × 縦5 の10個レイアウト */
     #results {
       display: grid;
       grid-template-columns: repeat(2, minmax(0, 1fr));
@@ -127,7 +125,9 @@
 <body>
   <header>
     <h1>YouTube検索（Bingフィルター）</h1>
-    <<div class="search-box">
+
+    <!-- 🔧 修正①：<<div → <div -->
+    <div class="search-box">
       <img src="youtube_search_tool.svg" alt="logo" class="search-logo">
 
       <div class="search-center">
@@ -152,8 +152,13 @@
     const PAGE_SIZE = 10;
 
     const resultsEl = document.getElementById("results");
-    const searchBtn = document.getElementById("searchBtn");
-    const inputEl = document.getElementById("q");
+
+    /* 🔧 修正②：searchBtn → search-btn */
+    const searchBtn = document.getElementById("search-btn");
+
+    /* 🔧 修正③：q → keyword */
+    const inputEl = document.getElementById("keyword");
+
     const prevPageBtn = document.getElementById("prevPageBtn");
     const nextPageBtn = document.getElementById("nextPageBtn");
 
