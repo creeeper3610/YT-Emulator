@@ -19,9 +19,9 @@ export default async function handler(req, res) {
 
     const html = await response.text();
 
-    // ★ 動画カードを抽出（ourl と meta_xx が入っているブロック）
+    // ★ 動画カードを抽出（mc_vtvc_video_◯◯ から始まるブロック）
     const cards = [...html.matchAll(
-      /<div id="mc_vtvc_video_[^"]+"([\s\S]*?)<\/div><\/div>/g
+      /<div id="mc_vtvc_video_[^"]+"([\s\S]*?)<div class="vrhdata"/g
     )];
 
     const results = [];
